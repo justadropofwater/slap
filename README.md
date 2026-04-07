@@ -1,6 +1,6 @@
 ![Screenshot](https://raw.githubusercontent.com/slap-editor/slap/master/screenshot.png)
 
-slap :wave: [![Build Status](https://img.shields.io/travis/slap-editor/slap.svg)](https://travis-ci.org/slap-editor/slap) [![Donate](https://img.shields.io/gratipay/slap.svg)](https://gratipay.com/slap/)
+slap
 ====
 
 slap is a Sublime-like terminal-based text editor that strives to make editing
@@ -18,12 +18,18 @@ from the terminal easier. It has:
 * heavily customizeable via [plugins](#plugins)
 * ... many other features that will make you leave nano, vim, and emacs behind
 
+Requirements
+------------
+
+Node.js >= 20 with a C++ compiler for native addon compilation (Xcode on macOS,
+build-essential on Debian/Ubuntu, or equivalent).
+
 Installation
 ------------
 
     $ curl -sL https://raw.githubusercontent.com/slap-editor/slap/master/install.sh | sh
 
-If you already have [NodeJS](http://nodejs.org/download/) installed:
+If you already have [NodeJS](https://nodejs.org/en/download/) (v20+) installed:
 
     $ sudo npm install -g slap@latest
 
