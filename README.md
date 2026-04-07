@@ -3,10 +3,9 @@
 slap
 ====
 
-> In 2018 the original author of the slap editor, Daniel Kaplun, passed away. Years after his untimely death his creation has stayed in many developers memories - even tho the project died and slowly became unusuable some years ago. I am happy to share a working version that has been modernized but maintains the spirit and experience of the original. In honor of Daniel, the slap editor will live on! - @justadropofwater
+> In 2018 the original author of the slap editor, Daniel Kaplun, passed away. Years after his untimely death his creation has stayed in many developers memories - even tho the project died and slowly became unusuable some years ago. I am happy to share a working version that has been modernized but maintains the spirit and experience of the original. The goal is for this to become stable over time. In honor of Daniel, the slap editor will live on! - @justadropofwater
 
-slap is a Sublime-like terminal-based text editor that strives to make editing
-from the terminal easier. It has:
+### _slap_ is a Sublime-like terminal-based text editor that strives to make editing from the terminal easier. It has:
 
 * first-class mouse support (even over an SSH connection)
 * a Sublime-like file sidebar
@@ -20,7 +19,7 @@ from the terminal easier. It has:
 * heavily customizeable via [plugins](#plugins)
 * ... many other features that will make you leave nano, vim, and emacs behind
 
-What changed in 1.0.0
+### What has changed from the original
 ---------------------
 
 The original slap (v0.1.61) targeted Node 4/6 and relied on several abandoned
@@ -49,11 +48,11 @@ build-essential on Debian/Ubuntu, or equivalent).
 Installation
 ------------
 
-    $ curl -sL https://raw.githubusercontent.com/slap-editor/slap/master/install.sh | sh
+    $ curl -sL https://raw.githubusercontent.com/justadropofwater/slap/master/install.sh | sh
 
-If you already have [NodeJS](https://nodejs.org/en/download/) (v20+) installed:
+Or clone the repo, cd to the root of the project, and 
 
-    $ sudo npm install -g slap@latest
+    $ sudo npm install -g  .
 
 Usage
 -----
