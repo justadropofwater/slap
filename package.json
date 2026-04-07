@@ -27,7 +27,7 @@
     "blessed": "0.1.81",
     "editor-widget": "1.1.1",
     "lodash": "4.14.1",
-    "rc": "1.1.6",
+    "rc": "1.2.8",
     "slap-util": "1.0.7",
     "ttys": "0.0.3",
     "update-notifier": "5.1.0"
