@@ -10,7 +10,9 @@
   "scripts": {
     "start": "./slap.js",
     "debug": "node-debug ./slap.js",
-    "test": "spec/index.js",
+    "postinstall": "node scripts/patch-native.js",
+    "test": "node spec/index.js",
+    "test:native": "node spec/native/runas.test.js && node spec/native/pathwatcher.test.js && node spec/native/marker-index.test.js",
     "cover": "istanbul cover spec/index.js"
   },
   "repository": {
