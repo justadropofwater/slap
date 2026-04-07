@@ -3,7 +3,7 @@
 slap
 ====
 
-> In 2018 the original author of slap editor, Daniel Kaplun, passed away. His creation has stayed in many developers memories even tho the project died and slowly became unusuable. I am happy to share a working version that has been modernized but maintains the spirit and experience of the original. In honor of Daniel the slap editor will live on!
+> In 2018 the original author of the slap editor, Daniel Kaplun, passed away. Years after his untimely death his creation has stayed in many developers memories - even tho the project died and slowly became unusuable some years ago. I am happy to share a working version that has been modernized but maintains the spirit and experience of the original. In honor of Daniel, the slap editor will live on! - @justadropofwater
 
 slap is a Sublime-like terminal-based text editor that strives to make editing
 from the terminal easier. It has:
