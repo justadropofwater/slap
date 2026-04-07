@@ -13,7 +13,9 @@
     "postinstall": "node scripts/patch-native.js",
     "test": "node spec/index.js",
     "test:native": "node spec/native/runas.test.js && node spec/native/pathwatcher.test.js && node spec/native/marker-index.test.js",
-    "cover": "node spec/index.js"
+    "cover": "c8 node spec/index.js",
+    "cover:native": "c8 npm run test:native",
+    "cover:report": "c8 report --reporter=text --reporter=html"
   },
   "repository": {
     "type": "git",
@@ -36,6 +38,7 @@
     "update-notifier": "5.1.0"
   },
   "devDependencies": {
+    "c8": "^11.0.0",
     "tape": "4.6.3"
   }
 }
