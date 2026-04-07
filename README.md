@@ -3,6 +3,8 @@
 slap
 ====
 
+> In 2018 the original author of slap editor, Daniel Kaplun, passed away. His creation has stayed in many developers memories even tho the project died and slowly became unusuable. I am happy to share a working version that has been modernized but maintains the spirit and experience of the original. In honor of Daniel the slap editor will live on!
+
 slap is a Sublime-like terminal-based text editor that strives to make editing
 from the terminal easier. It has:
 
@@ -17,6 +19,26 @@ from the terminal easier. It has:
 * autoindentation
 * heavily customizeable via [plugins](#plugins)
 * ... many other features that will make you leave nano, vim, and emacs behind
+
+What changed in 1.0.0
+---------------------
+
+The original slap (v0.1.61) targeted Node 4/6 and relied on several abandoned
+dependencies with native C++ addons that no longer compiled on modern Node.js.
+This release modernizes the entire stack while preserving every feature and the
+original editing experience:
+
+* **Native addon patches** -- `runas`, `pathwatcher`, and `marker-index` updated
+  for modern V8/C++20 APIs; vendored with an automatic postinstall rebuild
+* **Bluebird removed** -- all code now uses native `async`/`await` and `Promise`
+* **node-clap replaced** -- plugin loader rewritten without the embedded npm 2.x
+* **mkdirp replaced** -- uses built-in `fs.promises.mkdir({recursive: true})`
+* **ES6 classes** -- all 14 UI widget files converted from prototype chains
+* **Security** -- vulnerabilities reduced from 66 to 19; `rc` pinned to safe
+  1.2.8; `lodash` bumped to 4.17.21; abandoned devDeps removed
+* **Modern CI** -- GitHub Actions replacing Travis CI (Node 20 + 22)
+* **118 tests** across native addons, plugin loader, async migration, class
+  inheritance, and existing functionality
 
 Requirements
 ------------
@@ -80,7 +102,7 @@ Please note that plugin packages must have `"keywords": ["slap-plugin"]` in
 OS support
 ----------
 
-### OSX
+### macOS
 
 iTerm2 supports the mouse and most keybindings out of the box. For optimal
 Terminal.app usage, see [slap-Terminal.app-profile](https://github.com/slap-editor/slap-Terminal.app-profile).
@@ -92,15 +114,10 @@ If you are using X.Org, ensure xclip is installed for OS clipboard support.
 ### Windows
 
 Most terminal emulators in Windows do not support mouse events, PuTTY being a
-notable exception. In Cygwin, slap crashes on startup due to
-[joyent/node#6459](https://github.com/joyent/node/issues/6459).
+notable exception.
 
 [Issues](../../issues/new)
 --------
-
-Join us in [#slap on Freenode](http://webchat.freenode.net/?channels=slap) for
-troubleshooting, theme/plugin/core development, or palm strike discussion of any
-nature.
 
 ### Some keys don't work!
 
