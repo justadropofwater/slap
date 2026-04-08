@@ -49,4 +49,4 @@ if [ "$NODE_VERSION" -lt 20 ] 2>/dev/null; then
 fi
 
 maybe_sudo="$([ -w "$(npm get prefix)/lib/node_modules" ] || echo 'sudo')"
-$maybe_sudo npm install -g slap@latest
+$maybe_sudo npm install -g .
