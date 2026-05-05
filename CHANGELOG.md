@@ -7,10 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing on `main` yet. The next release line (v1.1.0) is being developed on
-the [`feat/v1.1.0-terminal-git`](https://github.com/justadropofwater/slap/tree/feat/v1.1.0-terminal-git)
-branch — see [WORKSTREAM.md](WORKSTREAM.md) for the in-flight terminal pane
-and git awareness work.
+(Nothing here on `main`; see the `[1.1.0] - Unreleased` section below for
+the in-flight branch state.)
+
+## [1.1.0] - Unreleased
+
+In flight on the
+[`feat/v1.1.0-terminal-git`](https://github.com/justadropofwater/slap/tree/feat/v1.1.0-terminal-git)
+branch. Plan:
+[terminal_pane_and_git_awareness_9f31fc99.plan.md](https://github.com/justadropofwater/slap/blob/feat/v1.1.0-terminal-git/WORKSTREAM.md).
+
+### Planned (Added)
+
+- **Phase 1** — Collapsible terminal pane with subprocess-mode command
+  runner. New `lib/ui/TerminalPane.js`, default toggle binding `F12`,
+  bottom horizontal split layout. Slap, Pane, Header all updated to
+  cooperate with the new pane's resize semantics.
+- **Phase 2a** — Git awareness in the header: current branch and
+  unstaged-change count rendered in the right-content of `lib/ui/Header.js`,
+  refreshed on save / debounced edit / 5-second poll. New thin `lib/git.js`
+  shelling out to `git`.
+- **Phase 2b** — Per-line git diff markers in the editor gutter (added,
+  modified, deleted). Touches the editor-widget@2.0.0 fork's
+  `lib/Editor.js` (will produce a v2.1.0 of the fork).
+- **Phase 3** — Real-PTY shell mode in `TerminalPane` via `node-pty`,
+  toggleable while the pane is focused. Light ANSI renderer for v1.1.0;
+  full xterm-class rendering deferred to a later release if needed.
 
 ## [1.0.0] - 2026-05-05
 
