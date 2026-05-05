@@ -1,0 +1,83 @@
+---
+description: ES6 class conventions for slap UI widgets
+globs: lib/ui/**/*.js
+---
+
+# Widget conventions
+
+There are **two patterns** for widgets, depending on what they extend.
+
+## Pattern 1: extend `BaseWidget` directly
+
+Use when the widget needs blessed.Box behavior plus our additions
+(focusable, ready promise, bindings, logger):
+
+```js
+var BaseWidget = require('./BaseWidget');
+
+class Foo extends BaseWidget {
+  constructor(opts) {
+    super(_.merge({/* defaults */}, Slap.global.options.foo, opts));
+    var self = this;
+    // children, fields, etc.
+  }
+
+  _initHandlers() {
+    var self = this;
+    // event wiring
+    return super._initHandlers.apply(self, arguments);  // chain to parent
+  }
+}
+```
+
+`Slap`, `Pane`, `EditorPane`, `Header`, `BaseForm`, `BaseFindForm`,
+`FindForm`, `GoLineForm`, `SaveAsForm`, `SaveAsCloseForm`, `PaneList` follow
+this pattern.
+
+## Pattern 2: extend a built-in blessed widget + mixin
+
+Use when you need a specific blessed widget (Button, List, FileManager,
+Text) AND BaseWidget's behavior. ES6 classes can't be called as functions,
+so we use a static mixin:
+
+```js
+var BaseWidget = require('./BaseWidget');
+
+class Bar extends BaseWidget.blessed.Button {
+  constructor(opts) {
+    opts = _.merge({/* defaults */}, Slap.global.options.bar, opts);
+    super(opts);                              // calls blessed.Button
+    BaseWidget._initBaseWidget(this, opts);   // mixes in BaseWidget behavior
+  }
+
+  _initHandlers() {
+    var self = this;
+    // ...
+    return BaseWidget.prototype._initHandlers.apply(self, arguments);
+  }
+}
+```
+
+`Button`, `Label`, `FileBrowser`, `PaneList` (its inner `list`) follow this
+pattern.
+
+## Logger lookup is defensive
+
+`BaseWidget._initBaseWidget` reads `self.parent`/`self.screen` (set by
+blessed in `super(opts)`), NOT `opts.parent`/`opts.screen`. The mixin path
+doesn't normalize opts the way the constructor path does. If you ever
+duplicate or refactor that lookup, **guard each `.options` deref**:
+
+```js
+// ❌ WRONG (blew up at runtime as `b663016`)
+var loggerOpts = opts.logger
+  || (opts.parent || {}).options.logger     // .options on {} → undefined
+  || (opts.screen || {}).options.logger;    // .logger on undefined → throws
+
+// ✅ RIGHT
+var parent = self.parent || opts.parent;
+var screen = self.screen || opts.screen;
+var loggerOpts = opts.logger
+  || (parent && parent.options && parent.options.logger)
+  || (screen && screen.options && screen.options.logger);
+```

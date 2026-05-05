@@ -1,0 +1,49 @@
+---
+description: Slap repo layout and the dual-repo dependency on editor-widget
+alwaysApply: true
+---
+
+# Repo architecture
+
+Slap is paired with a sibling repo at `~/repos/editor-widget` — a modernized
+fork of `slap-editor/editor-widget` (default branch `main`, tag `v2.0.0`,
+origin `git@github.com:justadropofwater/editor-widget.git`).
+
+Slap consumes the fork as a packed tarball:
+
+```json
+"editor-widget": "file:./vendor/editor-widget-2.0.0.tgz"
+```
+
+**Tarball, not directory.** npm's `file:` directory references symlink the
+package but skip transitive deps; the tarball form installs them. Don't
+change this to `file:../editor-widget` — installs will silently break.
+
+## Updating editor-widget
+
+Source of truth lives at `~/repos/editor-widget`. Editing
+`node_modules/editor-widget/...` directly inside slap is throwaway — gets
+blown away on the next `npm install`. The repack workflow:
+
+```bash
+cd ~/repos/editor-widget
+# edits + commit
+rm -f editor-widget-2.0.0.tgz
+npm pack
+cp editor-widget-2.0.0.tgz ~/repos/slap/vendor/
+cd ~/repos/slap
+rm -rf node_modules package-lock.json && npm install
+```
+
+## What lives where
+
+- `lib/ui/BaseWidget.js` (slap) and `lib/BaseWidget.js` (fork) are
+  **parallel** ~140 LOC ES6 classes, intentionally duplicated so the fork
+  stays self-contained. Don't try to share via npm package.
+- `lib/util/{text,markup,helpers}.js` (and `lib/util.js` in the fork): inlined
+  ex-`slap-util`. Surface: `text`, `markup`, `mod`, `typeOf`, `callBase`,
+  `getterSetter`, `parseOpts`, `resolvePath`, `logger`.
+- `vendor/runas`, `vendor/pathwatcher`, `vendor/marker-index`: V8-patched
+  Atom-era native addons, pinned via `overrides` in package.json.
+
+Full context: see [WORKSTREAM.md](../../WORKSTREAM.md).

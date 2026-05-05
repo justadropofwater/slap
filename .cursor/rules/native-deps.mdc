@@ -1,0 +1,44 @@
+---
+description: How vendored native addons + npm overrides are wired, and what to never do
+alwaysApply: true
+---
+
+# Native addons (`runas`, `pathwatcher`, `marker-index`)
+
+These three Atom-era addons fail to compile on Node 12+ without V8 API
+patches. They live under `vendor/<pkg>/` with patched `src/*.cc` and
+`binding.gyp`, and are wired into the install three ways:
+
+1. **Direct deps** in package.json:
+   ```json
+   "runas": "file:./vendor/runas",
+   "pathwatcher": "file:./vendor/pathwatcher",
+   "marker-index": "file:./vendor/marker-index",
+   ```
+2. **`$<name>` overrides** so transitive requests (e.g. `text-buffer →
+   pathwatcher`) resolve to the same vendored copy:
+   ```json
+   "overrides": {
+     "runas": "$runas",
+     "pathwatcher": "$pathwatcher",
+     "marker-index": "$marker-index"
+   }
+   ```
+3. **Stripped `package.json`** in each vendored package: no `scripts`, no
+   `devDependencies`. Without this, npm runs the legacy `prepublish` lifecycle
+   on `file:` deps, which fetches abandoned `electron-prebuilt@^0.30.1`
+   binaries that 404.
+
+`scripts/patch-native.js` is now a no-op safety net — it skips when
+`node_modules/<pkg>` is already a symlink to `vendor/<pkg>`. Don't reintroduce
+the postinstall copy-and-rebuild flow.
+
+## NEVER run `npm audit fix --force`
+
+It will rewrite package.json semver-major (e.g. `update-notifier: 5.1.0 →
+^7.3.1`) and may swap the vendored editor-widget tarball for the abandoned
+`editor-widget@1.0.13` from npm. The remaining audit advisories
+(`diff <=3.5.0`, `lodash <=4.17.23`) are unfixable upstream and not
+exploitable in slap's call paths.
+
+Use `npm audit` (read-only) or `npm audit fix` (no `--force`).

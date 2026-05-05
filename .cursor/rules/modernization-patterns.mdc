@@ -1,0 +1,78 @@
+---
+description: Conventions for replacing legacy patterns (Bluebird, prototypes, abandoned satellites)
+alwaysApply: true
+---
+
+# Modernization patterns
+
+Slap's pre-modernization codebase used Bluebird, prototype-chain inheritance,
+and several abandoned slap-editor satellite packages. Those are gone. Don't
+reintroduce them.
+
+## Promises: native, not Bluebird
+
+| Bluebird                     | Native equivalent                                   |
+| ---------------------------- | --------------------------------------------------- |
+| `Promise.method(fn)`         | `async function`                                    |
+| `.tap(fn)`                   | `.then(v => { fn(v); return v; })` or just `await`  |
+| `.return(x)`                 | `.then(() => x)`                                    |
+| `.spread(([a,b]) => …)`      | destructuring: `.then(([a, b]) => …)`               |
+| `.done()`                    | remove (native rejections auto-throw in modern Node)|
+| `.call('method')`            | `.then(v => v.method())`                            |
+| `Promise.promisifyAll(fs)`   | `fs.promises` / `require('fs').promises`            |
+| `Promise.promisify(fn)`      | `require('util').promisify(fn)`                     |
+| `Promise.try(fn)`            | `(async () => fn())()` or just call from async fn   |
+| `global.Promise = Bluebird`  | delete                                              |
+
+## ES6 classes, not `__proto__`
+
+Don't write:
+
+```js
+function Foo(opts) { Bar.call(this, opts); /* ... */ }
+Foo.prototype.__proto__ = Bar.prototype;
+Foo.prototype.method = function () { … };
+```
+
+Write:
+
+```js
+class Foo extends Bar {
+  constructor(opts) { super(opts); /* ... */ }
+  method() { … }
+}
+```
+
+For the mixin case (extending a built-in + needing BaseWidget behavior), see
+[widget-conventions](widget-conventions.mdc).
+
+## Banned package names
+
+These are abandoned and NOT in our dep tree. If you see one being
+suggested/added, that's a regression — use the local replacement instead:
+
+| Don't add        | Use instead                                    |
+| ---------------- | ---------------------------------------------- |
+| `bluebird`       | native `Promise`, `async`/`await`              |
+| `base-widget`    | `require('./BaseWidget')` (slap) / `require('./BaseWidget')` (fork) |
+| `slap-util`      | `require('../slap-util')` (slap) / `require('./util')` (fork) |
+| `editor-widget` from npm | the vendored tarball (slap) — already wired |
+| `node-clap`      | `lib/plugin-loader.js`                         |
+| `mkdirp`         | `fs.promises.mkdir(p, { recursive: true })`    |
+| `traverse`       | `lib/util/helpers.js#mapDeep`                  |
+| `winston`        | the streaming logger in `lib/slap-util.js`     |
+
+## text-buffer 9 marker properties
+
+`textBuf.markPosition(point, options)` in 9.x **drops** custom properties
+like `{type: 'foo'}` (only forwards `tailed` + `invalidate`). Always set
+custom marker types via `setProperties` after creation:
+
+```js
+var marker = textBuf.markPosition(p, { invalidate: 'never' });
+marker.setProperties({ type: 'selection' });
+```
+
+`markRange` *does* still accept custom properties (with a deprecation
+warning), so existing `markRange(range, { type: 'findMatch' })` callsites
+in `FindForm` etc. still work.
