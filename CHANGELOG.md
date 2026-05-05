@@ -31,8 +31,15 @@ branch. Plan:
   modified, deleted). Touches the editor-widget@2.0.0 fork's
   `lib/Editor.js` (will produce a v2.1.0 of the fork).
 - **Phase 3** — Real-PTY shell mode in `TerminalPane` via `node-pty`,
-  toggleable while the pane is focused. Light ANSI renderer for v1.1.0;
-  full xterm-class rendering deferred to a later release if needed.
+  toggled with `M-s` inside the terminal pane. Light ANSI renderer
+  ([`lib/ansi-render.js`](lib/ansi-render.js)) supports SGR colors
+  (basic + 256 + truecolor degraded to nearest basic), bold/underline/
+  inverse, backspace, bell, and braces escaping for blessed safety.
+  Cursor-positioning CSI sequences are silently dropped — full TUI app
+  support (vim, htop) is left for a heavier renderer later.
+  `scripts/patch-native.js` now restores +x on
+  `node_modules/node-pty/prebuilds/<platform>/spawn-helper` because npm
+  drops the executable bit on tarball/file: deps.
 
 ## [1.0.0] - 2026-05-05
 

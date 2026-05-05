@@ -58,4 +58,19 @@ patches.forEach(function (patch) {
   cp.execSync('npm rebuild ' + patch.pkg, { cwd: root, stdio: 'inherit' });
 });
 
+// node-pty bundles a `spawn-helper` binary in its prebuilds/ directory whose
+// +x bit gets dropped by npm on some install paths (notably file: and
+// tarball deps). Without it executable, pty.spawn fails with
+// `posix_spawnp failed.` Restore +x on every postinstall as a no-op when
+// the bit is already set.
+var ptyPrebuilds = path.join(nm, 'node-pty', 'prebuilds');
+if (fs.existsSync(ptyPrebuilds)) {
+  fs.readdirSync(ptyPrebuilds).forEach(function (platform) {
+    var helper = path.join(ptyPrebuilds, platform, 'spawn-helper');
+    if (fs.existsSync(helper)) {
+      try { fs.chmodSync(helper, 0o755); } catch (e) {}
+    }
+  });
+}
+
 console.log('Native addon patches checked.');
