@@ -28,7 +28,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "base-widget": "1.1.0",
     "blessed": "0.1.81",
     "editor-widget": "1.1.1",
     "lodash": "4.17.21",

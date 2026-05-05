@@ -1,6 +1,6 @@
 var test = require('tape');
 
-var BaseWidget = require('base-widget');
+var BaseWidget = require('../../lib/ui/BaseWidget');
 var Slap = require('../../lib/ui/Slap');
 var Pane = require('../../lib/ui/Pane');
 var EditorPane = require('../../lib/ui/EditorPane');

@@ -2,7 +2,7 @@
 /*global require*/
 
 var test = require('tape');
-var util = require('base-widget/spec/util');
+var util = require('./util');
 
 var cli = require('../lib/cli');
 var Slap = require('../lib/ui/Slap');
