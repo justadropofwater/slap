@@ -405,10 +405,6 @@ End-to-end smoke: `./slap.js README.md`. Verify mouse, syntax highlighting,
   pushed, `"editor-widget": "github:justadropofwater/editor-widget#v2.0.0"`
   works equivalently. The tarball is currently the source of truth so
   flipping the reference and deleting the tarball is fine whenever convenient.
-* **Rename slap's default branch `master` → `main`.** Editor-widget already
-  did this. To match: `git branch -m master main && git push -u origin main`,
-  flip the GitHub default, then update the `slap.ini` link in
-  `default-config.ini` from `blob/master` → `blob/main`.
 * **Clean up the highlight client subprocess on exit.** End-to-end smoke
   test exits but leaves the highlight subprocess running until something
   emits an EPIPE. Not user-visible but annoying.
