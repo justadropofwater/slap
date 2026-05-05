@@ -6,7 +6,34 @@ agents (and humans) so nobody has to re-derive what was already worked out.
 
 For the rules-of-thumb that should bias every agent action, see
 [`.cursor/rules/`](.cursor/rules/). This file is the *narrative* — the rules
-are the *imperatives*.
+are the *imperatives*. For the user-facing release log, see
+[CHANGELOG.md](CHANGELOG.md).
+
+---
+
+## Releases
+
+| Version    | Status               | Branch / tag                     | Scope                                                                     |
+| ---------- | -------------------- | -------------------------------- | ------------------------------------------------------------------------- |
+| **v1.0.0** | released 2026-05-05  | tag `v1.0.0` on `main`           | The modernization described below: Phases 1–5 + A–E + WORKSTREAM + rules. |
+| **v1.1.0** | in flight            | `feat/v1.1.0-terminal-git`       | Collapsible terminal pane + git awareness. See plan: [terminal_pane_and_git_awareness_9f31fc99.plan.md](/Users/williamsierra-lenhart/.cursor/plans/terminal_pane_and_git_awareness_9f31fc99.plan.md). |
+
+The companion fork
+[`justadropofwater/editor-widget`](https://github.com/justadropofwater/editor-widget)
+is at **v2.0.0** (default branch `main`), pinned by slap via the tarball at
+`vendor/editor-widget-2.0.0.tgz`. See its
+[`CHANGELOG.md`](../editor-widget/CHANGELOG.md) for the fork's own release
+log.
+
+Each new feature line gets:
+
+1. A feature branch `feat/v<x.y.z>-<short>` cut from the tag of the previous
+   release.
+2. A `[<x.y.z>] - Unreleased` heading at the top of `CHANGELOG.md`, filled in
+   as commits land.
+3. A version bump on `package.json` to `<x.y.z>-dev` while the branch is in
+   flight, finalized to `<x.y.z>` in the release commit.
+4. Annotated git tag and a GitHub release with notes from the CHANGELOG entry.
 
 ---
 
