@@ -27,17 +27,29 @@ dependencies with native C++ addons that no longer compiled on modern Node.js.
 This release modernizes the entire stack while preserving every feature and the
 original editing experience:
 
-* **Native addon patches** -- `runas`, `pathwatcher`, and `marker-index` updated
-  for modern V8/C++20 APIs; vendored with an automatic postinstall rebuild
-* **Bluebird removed** -- all code now uses native `async`/`await` and `Promise`
+* **Native addon patches** -- `runas`, `pathwatcher`, and `marker-index` are
+  vendored under `vendor/` and pinned via npm `overrides` so `npm install`
+  picks up the patched (modern V8 / C++20) sources directly, no postinstall
+  rebuild dance required
+* **Bluebird removed everywhere** -- slap and the modernized
+  [editor-widget](https://github.com/justadropofwater/editor-widget) fork both
+  use native `async`/`await` and `Promise`
+* **`base-widget`, `slap-util`, `editor-widget` brought in-house** -- the
+  abandoned slap-editor satellite packages are no longer dependencies;
+  `base-widget` and `slap-util` are inlined under `lib/ui/BaseWidget.js` and
+  `lib/util/`, and `editor-widget` was forked, modernized, and is referenced
+  via `vendor/editor-widget-2.0.0.tgz`
+* **Single `text-buffer` line** -- the modernized editor-widget pins
+  text-buffer to 9.2.2; the duplicate text-buffer 8 copy from the old
+  editor-widget is gone
 * **node-clap replaced** -- plugin loader rewritten without the embedded npm 2.x
 * **mkdirp replaced** -- uses built-in `fs.promises.mkdir({recursive: true})`
 * **ES6 classes** -- all 14 UI widget files converted from prototype chains
-* **Security** -- vulnerabilities reduced from 66 to 19; `rc` pinned to safe
-  1.2.8; `lodash` bumped to 4.17.21; abandoned devDeps removed
+* **Security** -- vulnerabilities reduced from 66 to a small handful; `rc`
+  pinned to safe 1.2.8; `lodash` bumped to 4.17.21; abandoned devDeps removed
 * **Modern CI** -- GitHub Actions replacing Travis CI (Node 20 + 22)
-* **118 tests** across native addons, plugin loader, async migration, class
-  inheritance, and existing functionality
+* **175+ tests** across native addons, plugin loader, async migration, class
+  inheritance, slap-util helpers, and existing functionality
 
 Requirements
 ------------
