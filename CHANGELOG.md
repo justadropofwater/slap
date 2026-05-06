@@ -14,32 +14,69 @@ the in-flight branch state.)
 
 In flight on the
 [`feat/v1.1.0-terminal-git`](https://github.com/justadropofwater/slap/tree/feat/v1.1.0-terminal-git)
-branch. Plan:
-[terminal_pane_and_git_awareness_9f31fc99.plan.md](https://github.com/justadropofwater/slap/blob/feat/v1.1.0-terminal-git/WORKSTREAM.md).
+branch.
 
-### Planned (Added)
+### Added — collapsible PTY terminal pane
 
-- **Phase 1** — Collapsible terminal pane with subprocess-mode command
-  runner. New `lib/ui/TerminalPane.js`, default toggle binding `F12`,
-  bottom horizontal split layout. Slap, Pane, Header all updated to
-  cooperate with the new pane's resize semantics.
-- **Phase 2a** — Git awareness in the header: current branch and
-  unstaged-change count rendered in the right-content of `lib/ui/Header.js`,
-  refreshed on save / debounced edit / 5-second poll. New thin `lib/git.js`
-  shelling out to `git`.
-- **Phase 2b** — Per-line git diff markers in the editor gutter (added,
-  modified, deleted). Touches the editor-widget@2.0.0 fork's
-  `lib/Editor.js` (will produce a v2.1.0 of the fork).
-- **Phase 3** — Real-PTY shell mode in `TerminalPane` via `node-pty`,
-  toggled with `M-s` inside the terminal pane. Light ANSI renderer
-  ([`lib/ansi-render.js`](lib/ansi-render.js)) supports SGR colors
-  (basic + 256 + truecolor degraded to nearest basic), bold/underline/
-  inverse, backspace, bell, and braces escaping for blessed safety.
-  Cursor-positioning CSI sequences are silently dropped — full TUI app
-  support (vim, htop) is left for a heavier renderer later.
-  `scripts/patch-native.js` now restores +x on
+A persistent PTY-backed shell pane, default toggle binding `F12`, bottom
+horizontal split. While the pane has focus every key goes straight to the
+shell -- so tab completion, history (`Ctrl-R`), vi/emacs line editing,
+custom completion functions, aliases, signal handling (`Ctrl-C`), and
+`exit` / `Ctrl-D` all just work, because they're not slap reimplementing
+them, they're whatever your `$SHELL` already does. F12 is the one key
+that bubbles up to slap so you can dismiss the pane.
+
+Output goes through a small line-buffer ANSI renderer
+([`lib/ansi-render.js`](lib/ansi-render.js)) that handles SGR colours
+(basic + 256-colour + truecolour degraded to nearest basic), bold /
+underline / inverse, `\r` for in-place line redraws (progress bars,
+readline prompt redraws, tab-completion candidate lists), `\b`,
+`CSI K` / `CSI 2K`, brace-escaping so user output can never inject
+blessed markup. A per-line cursor model so an echoed prompt
+(`echo cmd\r\n`) preserves the typed line on commit. Capped scrollback
+at 5000 lines.
+
+The renderer intentionally drops cursor-positioning CSIs (`CSI nA/B/C/D`,
+`CSI ;H`, scroll regions, alternate screen buffer). Full-screen TUI
+apps -- `vim`, `htop`, `less`, `fzf`, `watch -n` -- will not render
+correctly inside the pane; you can drop into them in your normal
+terminal. A future cell-grid renderer with alternate-screen-buffer
+support is the next obvious follow-up.
+
+This release subsumes earlier in-branch attempts at a subprocess-mode
+runner and an `M-s` shell-mode toggle; both have been removed in favour
+of the always-PTY model.
+
+### Added — git awareness
+
+- Current branch + unstaged-change count rendered in the right segment of
+  [`lib/ui/Header.js`](lib/ui/Header.js), refreshed on save, on
+  debounced edit, and on a 5-second poll (so external `git checkout` from
+  the terminal pane updates the header).
+- New thin [`lib/git.js`](lib/git.js) wrapping
+  `child_process.execFile('git', ...)` for `getBranch`, `getStatus`
+  (`git status --porcelain=v2 --branch`), and `getLineDiff`
+  (`git diff -U0 --no-color HEAD -- <path>`).
+- Per-line gutter diff markers in the editor: U+2503 (heavy vertical bar)
+  in green for added rows, yellow for modified rows; U+2581 (lower
+  one-eighth block) in red for the row immediately following a deletion.
+  Wired in [`lib/ui/EditorPane.js`](lib/ui/EditorPane.js) to refresh on
+  save and on debounced edit, gated on whether the file is in a repo.
+  Render-side change ships in editor-widget@2.1.0.
+
+### Changed
+
+- `editor-widget` bumped to 2.1.1 (gutter diff hook + highlight client
+  respawn fix). Vendored at `vendor/editor-widget-2.1.1.tgz`.
+- `scripts/patch-native.js` now restores +x on
   `node_modules/node-pty/prebuilds/<platform>/spawn-helper` because npm
-  drops the executable bit on tarball/file: deps.
+  strips the executable bit on tarball / file: deps. Without this every
+  fresh `npm install` would fail PTY spawn with `posix_spawnp failed.`.
+
+### Dependencies
+
+- New: `node-pty` (1.x). Native addon; the postinstall chmod above is the
+  only fix-up required.
 
 ## [1.0.0] - 2026-05-05
 
