@@ -192,6 +192,71 @@ test('TerminalPane integration: tab completes a partial filename (the user featu
 // Layout & focus
 // ---------------------------------------------------------------------------
 
+test('TerminalPane regression: clicking on the view does not throw "no focusable descendant"', function (t) {
+  // The crash trace from a real ./slap.js README.md run:
+  //
+  //   Error: no focusable descendant
+  //     at BaseWidget._focusDirection (.../BaseWidget.js:76)
+  //     at BaseWidget.focusNext (.../BaseWidget.js:80)
+  //     at BaseWidget.<anonymous> (.../BaseWidget.js:136)
+  //     at Screen.focusPush (.../blessed/lib/widgets/screen.js:1620)
+  //
+  // Root cause: blessed focuses the inner view widget on click; if view
+  // is a BaseWidget without focusable: true, BaseWidget._initHandlers'
+  // focus listener calls focusNext() which walks an empty subtree and
+  // throws. Fix: view is a plain blessed.Box (skips the BaseWidget
+  // focus-bouncing logic entirely) and is itself focusable.
+  t.plan(3);
+  var prevShell = process.env.SHELL;
+  process.env.SHELL = '/bin/sh';
+
+  var slap = buildSlap();
+  var term = slap.terminal;
+  term.show();
+
+  var thrown = null;
+  process.once('uncaughtException', function (err) { thrown = err; });
+
+  // Simulate the focus-on-click path that blessed runs internally when
+  // the user clicks on a `mouse: true` widget.
+  t.doesNotThrow(function () { term.view.focus(); }, 'view.focus() does not throw');
+  t.equal(thrown, null, 'no uncaughtException');
+  t.ok(term.hasFocus(), 'terminal.hasFocus() true even with view as the focused element (descendant)');
+
+  process.env.SHELL = prevShell;
+  teardown(slap);
+});
+
+test('TerminalPane: keys forwarded to PTY whether the view or the pane is focused', function (t) {
+  t.plan(2);
+  var prevShell = process.env.SHELL;
+  process.env.SHELL = '/bin/sh';
+
+  var slap = buildSlap();
+  var term = slap.terminal;
+  term.show();
+
+  // _initHandlers (which registers the keypress forwarder) is scheduled
+  // via setImmediate inside BaseWidget._initBaseWidget's ready chain.
+  // Wait for it before firing synthetic keypress events.
+  term.ready.then(function () {
+    var written = [];
+    var realWrite = term._pty.write.bind(term._pty);
+    term._pty.write = function (d) { written.push(d); return realWrite(d); };
+
+    term.view.focus();
+    term.view.emit('keypress', 'X', { full: 'x', name: 'x', ctrl: false, sequence: 'X' });
+    t.equal(written.pop(), 'X', 'keypress on view forwards to PTY');
+
+    term.focus();
+    term.emit('keypress', 'Y', { full: 'y', name: 'y', ctrl: false, sequence: 'Y' });
+    t.equal(written.pop(), 'Y', 'keypress on pane forwards to PTY too (belt-and-braces)');
+
+    process.env.SHELL = prevShell;
+    teardown(slap);
+  });
+});
+
 test('TerminalPane: toggle flips visibility, resizes panes, moves focus to/from terminal', function (t) {
   var prevShell = process.env.SHELL;
   process.env.SHELL = '/bin/sh';
