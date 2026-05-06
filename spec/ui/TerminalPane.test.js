@@ -1,4 +1,6 @@
 var test = require('tape');
+var fs = require('fs');
+var os = require('os');
 var path = require('path');
 var rc = require('rc');
 var _ = require('lodash');
@@ -96,6 +98,83 @@ test('TerminalPane: toggle flips visibility and resizes panes', function (t) {
 
   slap.quit();
   t.end();
+});
+
+test('TerminalPane integration: cat\'ing a file with literal braces does not crash blessed (regression)', function (t) {
+  // Regression for the v1.1.0 crash where `cat README.md` blew up inside
+  // blessed's program._attr because slap's own README contains literal
+  // {Ctrl+S} / {green-bg} text that scrollback (tags: true) tried to parse
+  // as markup. The fix: subprocess output goes through ansi.chunkToTags
+  // which escapes `{` and `}` to `{open}` / `{close}`.
+  t.plan(4);
+  var slap = buildSlap();
+
+  var fixture = path.join(os.tmpdir(), 'slap-terminal-braces-' + Date.now() + '.txt');
+  // Mix of patterns that previously crashed: known blessed style names,
+  // unknown style names, and bare braces.
+  var contents = [
+    '# Slap test fixture',
+    '',
+    'Save: {Ctrl+S}    Quit: {Ctrl+Q}',
+    'Style: {green-bg}highlight{/green-bg} or {bold}bold{/bold}',
+    'Bare braces: { and } and {{ }} should round-trip',
+    'Unknown tag {not-a-color} stays literal',
+    ''
+  ].join('\n');
+  fs.writeFileSync(fixture, contents);
+
+  var thrown = null;
+  process.once('uncaughtException', function (err) { thrown = err; });
+
+  slap.terminal.runCommand('cat ' + JSON.stringify(fixture)).then(function (code) {
+    t.equal(thrown, null, 'no uncaughtException from blessed tag parser');
+    t.equal(code, 0, 'cat exits 0');
+
+    var rendered = slap.terminal.scrollback.content || '';
+    // `{open}` / `{close}` is what ansi.chunkToTags emits for literal `{` `}`.
+    t.ok(rendered.indexOf('{open}Ctrl+S{close}') !== -1,
+      'literal {Ctrl+S} survived as {open}Ctrl+S{close}');
+    t.ok(rendered.indexOf('{open}not-a-color{close}') !== -1,
+      'unknown tag-like text was escaped, not interpreted');
+
+    fs.unlinkSync(fixture);
+    slap.quit();
+  }).catch(function (err) {
+    t.fail('runCommand rejected: ' + (err.stack || err));
+    try { fs.unlinkSync(fixture); } catch (e) {}
+    slap.quit();
+  });
+});
+
+test('TerminalPane integration: SGR colors in subprocess output render as blessed tags', function (t) {
+  t.plan(2);
+  var slap = buildSlap();
+  // Use printf so the ESC byte is emitted regardless of the shell.
+  slap.terminal.runCommand("printf '\\033[31mRED-WORD\\033[0m done'").then(function (code) {
+    t.equal(code, 0, 'printf exits 0');
+    var rendered = slap.terminal.scrollback.content || '';
+    t.ok(rendered.indexOf('{red-fg}') !== -1 && rendered.indexOf('RED-WORD') !== -1,
+      'SGR red foreground rendered as a {red-fg} tag around the word');
+    slap.quit();
+  });
+});
+
+test('TerminalPane integration: stdout and stderr maintain independent SGR state', function (t) {
+  t.plan(2);
+  var slap = buildSlap();
+  // stdout opens green and never closes; stderr opens red and never closes.
+  // Each stream's state must be kept separate -- otherwise stdout's green
+  // would bleed onto stderr or vice versa.
+  slap.terminal.runCommand(
+    "printf '\\033[32mgreen-on-stdout' && printf '\\033[31mred-on-stderr' 1>&2"
+  ).then(function (code) {
+    t.equal(code, 0, 'command exits 0');
+    var rendered = slap.terminal.scrollback.content || '';
+    var hasGreen = rendered.indexOf('{green-fg}') !== -1;
+    var hasRed = rendered.indexOf('{red-fg}') !== -1;
+    t.ok(hasGreen && hasRed, 'both streams contributed their own colors');
+    slap.quit();
+  });
 });
 
 test('TerminalPane: history navigation cycles through past commands', function (t) {
