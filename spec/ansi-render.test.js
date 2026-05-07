@@ -262,6 +262,116 @@ test('ansi buffer: single-byte ESC sequences (DECPAM, DECPNM, save/restore curso
   t.end();
 });
 
+// ---------------------------------------------------------------------------
+// Capability-query responses (Phase 4 follow-up: fix fish startup timeout)
+// ---------------------------------------------------------------------------
+
+test('ansi buffer: DA1 query (CSI c) queues a VT100-AVO response', function (t) {
+  // Fish blocks 2s waiting for this on startup, then prints "could not
+  // read response to Primary Device Attribute query" before degrading to
+  // a feature-reduced mode. Reply as VT100 with Advanced Video Option
+  // (?1;2c), the simplest universally-accepted answer.
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[c');
+  t.equal(buf.responses, '\x1b[?1;2c', 'CSI c -> CSI ?1;2c');
+  t.end();
+});
+
+test('ansi buffer: DA1 query with explicit "0" param also gets a response', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[0c');
+  t.equal(buf.responses, '\x1b[?1;2c');
+  t.end();
+});
+
+test('ansi buffer: DA2 query (CSI >c) queues a generic-terminal response', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[>c');
+  t.equal(buf.responses, '\x1b[>0;0;0c');
+  t.end();
+});
+
+test('ansi buffer: DSR ready (CSI 5n) replies with CSI 0n', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[5n');
+  t.equal(buf.responses, '\x1b[0n');
+  t.end();
+});
+
+test('ansi buffer: DSR cursor-pos (CSI 6n) replies with row=1, col=cursor+1', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'abc\x1b[6n');
+  // After "abc" the cursor is at column 3 (0-indexed); response is
+  // 1-indexed -> col 4. Row is always 1 in our line-buffer model.
+  t.equal(buf.responses, '\x1b[1;4R');
+  t.end();
+});
+
+test('ansi buffer: kitty keyboard query (CSI ?u) replies with "no flags"', function (t) {
+  // Replying CSI ?0u tells the shell "we don't speak the kitty keyboard
+  // protocol" so it falls back to legacy keystroke encoding (which our
+  // forwarder already handles).
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[?u');
+  t.equal(buf.responses, '\x1b[?0u');
+  t.end();
+});
+
+test('ansi buffer: XTVERSION query (CSI >q) replies with DCS > | name ST', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[>q');
+  t.equal(buf.responses, '\x1bP>|slap-pty\x1b\\');
+  t.end();
+});
+
+test('ansi buffer: DCS XTGETTCAP query gets an "invalid" reply that echoes the hex name', function (t) {
+  // 696e646e is hex for "indn" (terminfo capability). The 0+r prefix in
+  // the reply means "capability not supported"; the hex echo lets the
+  // shell match the response to its query.
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1bP+q696e646e\x1b\\');
+  t.equal(buf.responses, '\x1bP0+r696e646e\x1b\\');
+  t.end();
+});
+
+test('ansi buffer: replays the full fish startup probe in one chunk', function (t) {
+  // The exact byte sequence we observed fish emitting on startup. All
+  // four queries should be answered in one feed() call so a single
+  // pty.write() flushes them.
+  var buf = ansi.createBuffer();
+  ansi.feed(buf,
+    '\x1b[?u' +              // kitty keyboard
+    '\x1b[>0q' +              // XTVERSION
+    '\x1b[?1049h' +           // alt screen on (no response)
+    '\x1bP+q696e646e\x1b\\' + // DCS XTGETTCAP indn
+    '\x1b[?1049l' +           // alt screen off (no response)
+    '\x1b[0c'                 // DA1
+  );
+  t.ok(buf.responses.indexOf('\x1b[?0u') !== -1, 'kitty keyboard reply present');
+  t.ok(buf.responses.indexOf('\x1bP>|slap-pty\x1b\\') !== -1, 'XTVERSION reply present');
+  t.ok(buf.responses.indexOf('\x1bP0+r696e646e\x1b\\') !== -1, 'XTGETTCAP reply present');
+  t.ok(buf.responses.indexOf('\x1b[?1;2c') !== -1, 'DA1 reply present');
+  t.end();
+});
+
+test('ansi buffer: responses are independent of rendered content', function (t) {
+  // The query replies must not bleed into the visible output buffer --
+  // they go to `responses` only.
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[c');
+  t.equal(ansi.render(buf), '', 'no visible content from a DA1 query');
+  t.equal(buf.cells.length, 0, 'no cells written');
+  t.end();
+});
+
+test('ansi buffer: reset() also clears pending responses', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, '\x1b[c');
+  ansi.reset(buf);
+  t.equal(buf.responses, '');
+  t.end();
+});
+
 test('ansi buffer: incomplete OSC at chunk boundary is buffered, not partially leaked', function (t) {
   var buf = ansi.createBuffer();
   // First chunk ends mid-OSC.
