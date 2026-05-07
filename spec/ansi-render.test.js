@@ -222,6 +222,100 @@ test('ansi buffer: every basic + bright color tag is blessed-parseable', functio
 });
 
 // ---------------------------------------------------------------------------
+// Cursor save/restore + horizontal moves (fish autosuggestion regression)
+// ---------------------------------------------------------------------------
+
+test('ansi buffer: ESC 7 saves cursor, ESC 8 restores it', function (t) {
+  // Emulates the core of fish autosuggestion: type a char, save cursor,
+  // paint the suggestion, restore so the next keystroke overwrites the
+  // suggestion. Visible bug before the fix: typing `ls` produced `lsls`
+  // because the second `s` landed past the painted ` -la`.
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'l\x1b7s -la\x1b8s');
+  // After: 'l' at col 0; cursor=1 saved; ' s -la' painted at cols 1-5;
+  // cursor restored to 1; final 's' overwrites cell[1] which was 's'.
+  t.equal(ansi.render(buf), 'ls -la', 'cells preserved');
+  t.equal(buf.cursor, 2, 'cursor advanced past the typed char');
+  t.end();
+});
+
+test('ansi buffer: CSI s / CSI u (SCO save/restore) match the ESC 7/8 pair', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'X\x1b[sY\x1b[uZ');
+  // X at 0, save (cursor=1), Y at 1 (overwrite nothing -- cell[1] new),
+  // restore (cursor=1), Z at 1 overwrites Y.
+  t.equal(ansi.render(buf), 'XZ', 'restore overwrites Y with Z');
+  t.end();
+});
+
+test('ansi buffer: CSI nC moves cursor forward, leaving a gap rendered as spaces', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'a\x1b[3Cb');
+  // 'a' at 0, cursor=1, forward 3 -> cursor=4, 'b' at 4. cells[1..3] are
+  // falsy and renderCells emits spaces for them.
+  t.equal(ansi.render(buf), 'a   b');
+  t.end();
+});
+
+test('ansi buffer: CSI nD moves cursor backward, allowing overwrite', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'abcdef\x1b[3DZ');
+  // cursor=6 after abcdef, back 3 -> cursor=3, Z overwrites cell[3].
+  t.equal(ansi.render(buf), 'abcZef');
+  t.end();
+});
+
+test('ansi buffer: CSI nG sets absolute column (1-indexed in protocol)', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'abcdef\x1b[3GZ');
+  // CSI 3G -> cursor at col 3 in protocol = index 2. Z overwrites cell[2].
+  t.equal(ansi.render(buf), 'abZdef');
+  t.end();
+});
+
+test('ansi buffer: CSI ;nH honors col when row is 1, ignores other rows', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'abcdef\x1b[1;2HZ');
+  t.equal(ansi.render(buf), 'aZcdef', 'row 1 col 2 -> overwrite cell[1]');
+
+  // Multi-row moves are dropped to protect the line-buffer model.
+  var buf2 = ansi.createBuffer();
+  ansi.feed(buf2, 'hello\x1b[5;3HQ');
+  t.equal(ansi.render(buf2), 'helloQ', 'row > 1 ignored, Q lands at end');
+  t.end();
+});
+
+test('ansi buffer: CSI A / CSI B (cursor up/down) are no-ops', function (t) {
+  var buf = ansi.createBuffer();
+  ansi.feed(buf, 'abc\x1b[Adef\x1b[Bghi');
+  // The A and B should not move our cursor since we don't track rows.
+  // All chars accumulate horizontally as if A/B weren't there.
+  t.equal(ansi.render(buf), 'abcdefghi');
+  t.end();
+});
+
+test('ansi buffer: autosuggestion redraw + clear matches what fish does', function (t) {
+  // Synthesize a slightly more realistic fish-like sequence:
+  //   1. type 'l'
+  //   2. save cursor
+  //   3. paint dim 's -la' as autosuggestion
+  //   4. restore cursor
+  //   5. type 's' (user, overwriting the s of the suggestion)
+  //   6. save cursor + clear-to-end (suggestion no longer matches) + restore
+  var buf = ansi.createBuffer();
+  ansi.feed(buf,
+    'l' +              // user types 'l'
+    '\x1b7' +          // save
+    '\x1b[2ms -la\x1b[0m' + // dim suggestion
+    '\x1b8' +          // restore -> cursor back at 1
+    's' +              // user types 's' (overwrites 's' from suggestion)
+    '\x1b7\x1b[K\x1b8' // save, clear-to-end, restore
+  );
+  t.equal(ansi.render(buf), 'ls', 'final visible content is just "ls"');
+  t.end();
+});
+
+// ---------------------------------------------------------------------------
 // String-class escapes: OSC, DCS, SOS, PM, APC, and single-byte ESC
 // ---------------------------------------------------------------------------
 
@@ -251,14 +345,15 @@ test('ansi buffer: DCS sequence (ESC P ... ST) is dropped', function (t) {
   t.end();
 });
 
-test('ansi buffer: single-byte ESC sequences (DECPAM, DECPNM, save/restore cursor) are dropped', function (t) {
-  // ESC = (DECPAM, application keypad), ESC > (DECPNM, normal keypad),
-  // ESC 7 / ESC 8 (save / restore cursor) emitted by readline and shell
-  // bracketed-paste setup. Used to leak the second byte (= / > / 7 / 8)
-  // as a visible character.
+test('ansi buffer: single-byte ESC sequences DECPAM / DECPNM are dropped without leaking', function (t) {
+  // ESC = (DECPAM, application keypad) and ESC > (DECPNM, normal keypad)
+  // are emitted by readline and shell bracketed-paste setup. Both bytes
+  // (ESC and the trailing = / >) must be consumed; previously the
+  // trailing byte leaked as visible text. ESC 7 / ESC 8 are tested
+  // separately because they are NOT no-ops (cursor save/restore).
   var buf = ansi.createBuffer();
-  ansi.feed(buf, 'a\x1b=b\x1b>c\x1b7d\x1b8e');
-  t.equal(ansi.render(buf), 'abcde');
+  ansi.feed(buf, 'a\x1b=b\x1b>c');
+  t.equal(ansi.render(buf), 'abc');
   t.end();
 });
 
